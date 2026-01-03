@@ -65,6 +65,26 @@ enum SocialPlatform: String, Codable {
     case youtube = "YOUTUBE"
     case twitter = "TWITTER"
     case facebook = "FACEBOOK"
+
+    var icon: String {
+        switch self {
+        case .instagram: return "camera.fill"
+        case .tiktok: return "music.note"
+        case .youtube: return "play.rectangle.fill"
+        case .twitter: return "at"
+        case .facebook: return "person.2.fill"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .instagram: return "Instagram"
+        case .tiktok: return "TikTok"
+        case .youtube: return "YouTube"
+        case .twitter: return "Twitter"
+        case .facebook: return "Facebook"
+        }
+    }
 }
 
 // MARK: - Restaurant Profile

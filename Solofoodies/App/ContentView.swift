@@ -83,9 +83,14 @@ struct FoodieTabView: View {
 struct RestaurantTabView: View {
     var body: some View {
         TabView {
+            ExploreFoodiesView()
+                .tabItem {
+                    Label(String(localized: "Explorar"), systemImage: "magnifyingglass")
+                }
+
             RestaurantCollaborationsView()
                 .tabItem {
-                    Label(String(localized: "Colaboraciones"), systemImage: "star.fill")
+                    Label(String(localized: "Colabs"), systemImage: "star.fill")
                 }
 
             PlaceholderView(title: "Chat", icon: "message.fill")

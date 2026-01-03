@@ -28,6 +28,7 @@ enum APIEndpoint {
     case foodieByUsername(username: String)
     case updateFoodieProfile
     case updateFoodieAddress
+    case foodieProvinces
 
     // MARK: - Restaurants
     case listRestaurants
@@ -104,6 +105,7 @@ enum APIEndpoint {
         case .foodieByUsername(let username): return "foodies/username/\(username)"
         case .updateFoodieProfile: return "foodies/me/profile"
         case .updateFoodieAddress: return "foodies/me/address"
+        case .foodieProvinces: return "foodies/provinces"
 
         // Restaurants
         case .listRestaurants: return "restaurants"
