@@ -47,6 +47,10 @@ final class APIClient: @unchecked Sendable {
         return try await request(endpoint, method: "PUT", body: body)
     }
 
+    func put<T: Decodable>(_ endpoint: APIEndpoint) async throws -> T {
+        return try await request(endpoint, method: "PUT")
+    }
+
     func patch<T: Decodable, B: Encodable>(_ endpoint: APIEndpoint, body: B) async throws -> T {
         return try await request(endpoint, method: "PATCH", body: body)
     }
@@ -57,6 +61,10 @@ final class APIClient: @unchecked Sendable {
 
     func delete(_ endpoint: APIEndpoint) async throws {
         let _: EmptyResponse = try await request(endpoint, method: "DELETE")
+    }
+
+    func delete<T: Decodable>(_ endpoint: APIEndpoint) async throws -> T {
+        return try await request(endpoint, method: "DELETE")
     }
 
     // MARK: - Private

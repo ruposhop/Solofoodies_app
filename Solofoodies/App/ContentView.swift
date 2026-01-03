@@ -64,7 +64,7 @@ struct FoodieTabView: View {
                     Label(String(localized: "Mis Colabs"), systemImage: "star.fill")
                 }
 
-            PlaceholderView(title: "Chat", icon: "message.fill")
+            ConversationsListView()
                 .tabItem {
                     Label(String(localized: "Chat"), systemImage: "message.fill")
                 }
@@ -93,7 +93,7 @@ struct RestaurantTabView: View {
                     Label(String(localized: "Colabs"), systemImage: "star.fill")
                 }
 
-            PlaceholderView(title: "Chat", icon: "message.fill")
+            ConversationsListView()
                 .tabItem {
                     Label(String(localized: "Chat"), systemImage: "message.fill")
                 }

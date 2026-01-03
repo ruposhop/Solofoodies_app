@@ -73,6 +73,9 @@ enum APIEndpoint {
     case unreadCount
     case hideConversation(conversationId: String)
 
+    // MARK: - Custom
+    case custom(String)
+
     // MARK: - Ratings
     case createRating
     case collaborationRatings(collaborationId: String)
@@ -149,6 +152,9 @@ enum APIEndpoint {
         case .markAsRead(let id): return "chat/conversations/\(id)/read"
         case .unreadCount: return "chat/unread"
         case .hideConversation(let id): return "chat/conversations/\(id)"
+
+        // Custom
+        case .custom(let path): return path
 
         // Ratings
         case .createRating: return "ratings"
