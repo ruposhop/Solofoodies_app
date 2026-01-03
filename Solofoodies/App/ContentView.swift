@@ -49,19 +49,19 @@ struct LoadingView: View {
     }
 }
 
-// MARK: - Foodie Tab View (Placeholder)
+// MARK: - Foodie Tab View
 
 struct FoodieTabView: View {
     var body: some View {
         TabView {
-            PlaceholderView(title: "Explorar", icon: "magnifyingglass")
+            ExploreCollaborationsView()
                 .tabItem {
                     Label(String(localized: "Explorar"), systemImage: "magnifyingglass")
                 }
 
-            PlaceholderView(title: "Colaboraciones", icon: "star.fill")
+            MyCollaborationsView()
                 .tabItem {
-                    Label(String(localized: "Colaboraciones"), systemImage: "star.fill")
+                    Label(String(localized: "Mis Colabs"), systemImage: "star.fill")
                 }
 
             PlaceholderView(title: "Chat", icon: "message.fill")
@@ -78,19 +78,14 @@ struct FoodieTabView: View {
     }
 }
 
-// MARK: - Restaurant Tab View (Placeholder)
+// MARK: - Restaurant Tab View
 
 struct RestaurantTabView: View {
     var body: some View {
         TabView {
-            PlaceholderView(title: "Colaboraciones", icon: "star.fill")
+            RestaurantCollaborationsView()
                 .tabItem {
                     Label(String(localized: "Colaboraciones"), systemImage: "star.fill")
-                }
-
-            PlaceholderView(title: "Solicitudes", icon: "person.2.fill")
-                .tabItem {
-                    Label(String(localized: "Solicitudes"), systemImage: "person.2.fill")
                 }
 
             PlaceholderView(title: "Chat", icon: "message.fill")

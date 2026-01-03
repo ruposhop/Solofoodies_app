@@ -58,7 +58,10 @@ enum APIEndpoint {
     case cancelCollaboration(id: String)
     case scheduleCollaboration(id: String)
     case addContentLink(id: String)
+    case removeContentLink(id: String)
     case respondToInvitation(id: String)
+    case deliveryDefaults
+    case confirmDeliveryInfo(id: String)
 
     // MARK: - Chat
     case conversations
@@ -131,7 +134,10 @@ enum APIEndpoint {
         case .cancelCollaboration(let id): return "collaborations/\(id)"
         case .scheduleCollaboration(let id): return "collaborations/\(id)/schedule"
         case .addContentLink(let id): return "collaborations/\(id)/content-link"
+        case .removeContentLink(let id): return "collaborations/\(id)/content-link"
         case .respondToInvitation(let id): return "collaborations/\(id)/respond"
+        case .deliveryDefaults: return "collaborations/delivery/defaults"
+        case .confirmDeliveryInfo(let id): return "collaborations/\(id)/delivery-info"
 
         // Chat
         case .conversations: return "chat/conversations"
