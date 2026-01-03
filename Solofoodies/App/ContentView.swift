@@ -69,7 +69,7 @@ struct FoodieTabView: View {
                     Label(String(localized: "Chat"), systemImage: "message.fill")
                 }
 
-            ProfilePlaceholderView()
+            FoodieProfileView()
                 .tabItem {
                     Label(String(localized: "Perfil"), systemImage: "person.fill")
                 }
@@ -98,7 +98,7 @@ struct RestaurantTabView: View {
                     Label(String(localized: "Chat"), systemImage: "message.fill")
                 }
 
-            ProfilePlaceholderView()
+            RestaurantProfileView()
                 .tabItem {
                     Label(String(localized: "Perfil"), systemImage: "person.fill")
                 }
