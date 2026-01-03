@@ -10,6 +10,7 @@ import Combine
 final class ProfileViewModel: ObservableObject {
     // MARK: - Published Properties
 
+    @Published var fullProfile: FullUserProfile?
     @Published var ratings: [ProfileRating] = []
     @Published var ratingStats: RatingStats = RatingStats(totalRatings: 0, averageScore: nil)
     @Published var balance: Double = 0
@@ -20,6 +21,36 @@ final class ProfileViewModel: ObservableObject {
 
     private let profileService = ProfileService.shared
 
+    // MARK: - Computed Properties
+
+    var foodieProfile: FullFoodieProfile? {
+        fullProfile?.foodieProfile
+    }
+
+    var socialNetworks: [ProfileSocialNetwork] {
+        foodieProfile?.socialNetworks ?? []
+    }
+
+    var rates: [ProfileRate] {
+        foodieProfile?.rates ?? []
+    }
+
+    var trips: [ProfileTrip] {
+        foodieProfile?.trips ?? []
+    }
+
+    var activeTrips: [ProfileTrip] {
+        trips.filter { $0.isActive || $0.isUpcoming }
+    }
+
+    var activeRestaurant: FullRestaurantProfile? {
+        guard let profiles = fullProfile?.restaurantProfiles else { return nil }
+        if let activeId = fullProfile?.activeRestaurantId {
+            return profiles.first { $0.id == activeId }
+        }
+        return profiles.first
+    }
+
     // MARK: - Load Profile Data
 
     func loadProfileData(for userId: String) async {
@@ -28,6 +59,9 @@ final class ProfileViewModel: ObservableObject {
         error = nil
 
         do {
+            // Load full profile
+            fullProfile = try await profileService.getFullProfile()
+
             // Load ratings
             let ratingsResponse = try await profileService.getUserRatings(userId: userId)
             ratings = ratingsResponse.ratings

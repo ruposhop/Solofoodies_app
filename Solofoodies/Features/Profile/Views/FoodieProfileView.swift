@@ -11,7 +11,8 @@ struct FoodieProfileView: View {
     @State private var showingSidebar = false
 
     private var user: User? { authViewModel.currentUser }
-    private var foodieProfile: FoodieProfileData? { user?.foodieProfile }
+    private var fullProfile: FullUserProfile? { viewModel.fullProfile }
+    private var foodieProfile: FullFoodieProfile? { viewModel.foodieProfile }
 
     var body: some View {
         NavigationStack {
@@ -168,22 +169,21 @@ struct FoodieProfileView: View {
 
     private var statsRow: some View {
         HStack(spacing: 0) {
-            // Social Networks
-            if let networks = foodieProfile?.socialNetworks {
-                ForEach(networks.sorted(by: { platformOrder($0.platform) < platformOrder($1.platform) })) { network in
-                    statItem(
-                        icon: network.platform.icon,
-                        value: viewModel.formatFollowers(network.followers),
-                        subtitle: network.platform != .facebook ?
-                            String(format: "%.2f%%", network.engagementRate ?? 0) : nil
-                    )
-                }
+            // Social Networks from full profile
+            let networks = viewModel.socialNetworks.sorted { platformOrder($0.platform) < platformOrder($1.platform) }
+            ForEach(networks) { network in
+                statItem(
+                    icon: network.platform.icon,
+                    value: viewModel.formatFollowers(network.followers),
+                    subtitle: network.platform != .facebook ?
+                        String(format: "%.2f%%", network.engagementRate ?? 0) : nil
+                )
             }
 
             // Collaborations count
             statItem(
                 icon: "star.fill",
-                value: "\(user?.foodieProfile?.followers ?? 0)",
+                value: "\(foodieProfile?.followers ?? 0)",
                 subtitle: String(localized: "Colabs")
             )
         }
@@ -233,20 +233,47 @@ struct FoodieProfileView: View {
             Text(String(localized: "Tarifas"))
                 .font(.title3.bold())
 
-            // TODO: Add rates from API
-            VStack(spacing: 0) {
-                Text(String(localized: "No tienes tarifas configuradas"))
-                    .foregroundStyle(.secondary)
-                    .padding()
+            if viewModel.rates.isEmpty {
+                VStack(spacing: 0) {
+                    Text(String(localized: "No tienes tarifas configuradas"))
+                        .foregroundStyle(.secondary)
+                        .padding()
+                }
+                .frame(maxWidth: .infinity)
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(style: StrokeStyle(lineWidth: 1, dash: [5]))
+                        .foregroundStyle(Color(.systemGray4))
+                )
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(viewModel.rates) { rate in
+                        HStack {
+                            Text(rate.description)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+
+                            Spacer()
+
+                            Text(String(format: "%.0f€", rate.price))
+                                .font(.subheadline.bold())
+                        }
+                        .padding()
+
+                        if rate.id != viewModel.rates.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color(.systemGray4), lineWidth: 1)
+                )
             }
-            .frame(maxWidth: .infinity)
-            .background(Color(.systemBackground))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [5]))
-                    .foregroundStyle(Color(.systemGray4))
-            )
         }
         .padding(.horizontal)
         .padding(.top, 24)

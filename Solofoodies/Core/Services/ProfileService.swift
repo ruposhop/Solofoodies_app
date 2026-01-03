@@ -11,6 +11,12 @@ final class ProfileService {
 
     private init() {}
 
+    // MARK: - Get Full Profile
+
+    func getFullProfile() async throws -> FullUserProfile {
+        return try await api.get(.userProfile)
+    }
+
     // MARK: - Get User Ratings
 
     func getUserRatings(userId: String) async throws -> UserRatingsResponse {

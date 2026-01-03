@@ -37,6 +37,90 @@ struct RatingStats: Codable {
     let averageScore: Double?
 }
 
+// MARK: - Full User Profile (from /users/me/profile)
+
+struct FullUserProfile: Decodable, Identifiable {
+    let id: String
+    let email: String
+    let name: String
+    let role: UserRole
+    let language: String?
+    let igUsername: String?
+    let emailVerified: Bool?
+    let isAllStar: Bool?
+    let creditBalance: Double?
+
+    // Foodie specific
+    let foodieProfile: FullFoodieProfile?
+
+    // Restaurant specific
+    let activeRestaurantId: String?
+    let restaurantProfiles: [FullRestaurantProfile]?
+    let subscription: UserSubscription?
+}
+
+struct FullFoodieProfile: Decodable, Identifiable {
+    let id: String
+    let bio: String?
+    let followers: Int
+    let profilePicture: String?
+    let address: Address?
+    let trips: [ProfileTrip]?
+    let socialNetworks: [ProfileSocialNetwork]?
+    let rates: [ProfileRate]?
+}
+
+struct ProfileTrip: Decodable, Identifiable {
+    let id: String
+    let country: String
+    let countryIso: String?
+    let state: String
+    let stateIso: String?
+    let startDate: Date
+    let endDate: Date
+
+    var isActive: Bool {
+        let now = Date()
+        return now >= startDate && now <= endDate
+    }
+
+    var isUpcoming: Bool {
+        Date() < startDate
+    }
+}
+
+struct ProfileSocialNetwork: Decodable, Identifiable {
+    let id: String
+    let platform: SocialPlatform
+    let username: String
+    let followers: Int
+    let engagementRate: Double?
+    let profileUrl: String?
+}
+
+struct ProfileRate: Decodable, Identifiable {
+    let id: String
+    let description: String
+    let price: Double
+}
+
+struct FullRestaurantProfile: Decodable, Identifiable {
+    let id: String
+    let restaurantName: String
+    let contactName: String
+    let status: RestaurantStatus
+    let coverImage: String?
+    let profilePicture: String?
+    let bio: String?
+    let followers: Int?
+    let engagementRate: Double?
+    let isVerified: Bool?
+    let cif: String?
+    let phone: String?
+    let address: Address?
+    let billingAddress: Address?
+}
+
 // MARK: - API Responses
 
 struct UserRatingsResponse: Decodable {
