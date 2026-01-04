@@ -36,6 +36,7 @@ enum APIEndpoint {
     case myRestaurants
     case createRestaurant
     case updateRestaurantProfile
+    case switchActiveRestaurant
     case restaurantLocations(restaurantId: String)
     case addLocation(restaurantId: String)
     case updateLocation(restaurantId: String, locationId: String)
@@ -116,6 +117,7 @@ enum APIEndpoint {
         case .myRestaurants: return "restaurants/my"
         case .createRestaurant: return "restaurants"
         case .updateRestaurantProfile: return "restaurants/me/profile"
+        case .switchActiveRestaurant: return "restaurants/switch"
         case .restaurantLocations(let id): return "restaurants/\(id)/locations"
         case .addLocation(let id): return "restaurants/\(id)/locations"
         case .updateLocation(let rid, let lid): return "restaurants/\(rid)/locations/\(lid)"

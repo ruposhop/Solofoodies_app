@@ -179,6 +179,28 @@ final class AuthViewModel: ObservableObject {
         return restaurants.first { $0.id == activeId }
     }
 
+    func switchRestaurant(to restaurantId: String) async {
+        guard restaurantId != activeRestaurantId else { return }
+
+        isLoading = true
+        error = nil
+
+        do {
+            currentUser = try await authService.switchActiveRestaurant(restaurantId: restaurantId)
+            updateRestaurantState()
+        } catch let apiError as APIError {
+            error = apiError.localizedDescription
+        } catch {
+            self.error = String(localized: "Error al cambiar de restaurante")
+        }
+
+        isLoading = false
+    }
+
+    var hasMultipleRestaurants: Bool {
+        restaurants.count > 1
+    }
+
     // MARK: - Private
 
     private func loadCurrentUser() async {

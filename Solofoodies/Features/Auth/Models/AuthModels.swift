@@ -224,6 +224,10 @@ struct ResetPasswordRequest: Encodable {
     let newPassword: String
 }
 
+struct SwitchRestaurantRequest: Encodable {
+    let restaurantId: String
+}
+
 // MARK: - Auth Responses
 
 struct AuthResponse: Decodable {

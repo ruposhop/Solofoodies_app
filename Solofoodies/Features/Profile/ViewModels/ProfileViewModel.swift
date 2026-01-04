@@ -15,6 +15,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var ratingStats: RatingStats = RatingStats(totalRatings: 0, averageScore: nil)
     @Published var balance: Double = 0
     @Published var pendingRatingsCount: Int = 0
+    @Published var collaborationsCount: Int = 0
 
     @Published var isLoading = false
     @Published var error: String?
@@ -78,6 +79,13 @@ final class ProfileViewModel: ObservableObject {
             // Load pending ratings count
             do {
                 pendingRatingsCount = try await profileService.getPendingRatingsCount()
+            } catch {
+                // Silent fail
+            }
+
+            // Load collaboration count
+            do {
+                collaborationsCount = try await profileService.getCollaborationCount()
             } catch {
                 // Silent fail
             }

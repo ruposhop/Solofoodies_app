@@ -8,6 +8,7 @@ import SwiftUI
 struct ChatDetailView: View {
     let conversation: Conversation
     @ObservedObject var viewModel: ChatViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var messageText: String = ""
     @FocusState private var isInputFocused: Bool
@@ -42,6 +43,8 @@ struct ChatDetailView: View {
             }
         }
         .task {
+            // Ensure currentUserId is set from auth
+            viewModel.setCurrentUserId(authViewModel.currentUser?.id)
             await viewModel.loadMessages(for: conversation.id)
             viewModel.startPolling(for: conversation.id)
         }

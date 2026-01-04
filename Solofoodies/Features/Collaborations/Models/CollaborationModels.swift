@@ -36,6 +36,28 @@ enum CollaborationStatus: String, Codable {
     case closed = "CLOSED"
     case completed = "COMPLETED"
     case cancelled = "CANCELLED"
+
+    var displayName: String {
+        switch self {
+        case .open: return String(localized: "Abierta")
+        case .paused: return String(localized: "Pausada")
+        case .archived: return String(localized: "Archivada")
+        case .closed: return String(localized: "Cerrada")
+        case .completed: return String(localized: "Completada")
+        case .cancelled: return String(localized: "Cancelada")
+        }
+    }
+
+    var color: String {
+        switch self {
+        case .open: return "4CAF50"      // Green
+        case .paused: return "FFA500"    // Orange
+        case .archived: return "9E9E9E"  // Gray
+        case .closed: return "607D8B"    // Blue Gray
+        case .completed: return "2196F3" // Blue
+        case .cancelled: return "F44336" // Red
+        }
+    }
 }
 
 enum ApplicationStatus: String, Codable {
@@ -74,11 +96,16 @@ struct CollaborationLocation: Codable, Identifiable {
     let line: String
     let city: String
     let state: String?
+    let zipCode: String?
     let country: String
     let countryIso: String?
     let contactName: String?
     let contactPhone: String?
     let coverManagerSlug: String?
+    let restaurantProfileId: String?
+    let isActive: Bool?
+    let createdAt: Date?
+    let updatedAt: Date?
 }
 
 // MARK: - Public Collaboration (Restaurant Offer)
@@ -337,11 +364,16 @@ struct CreatePublicCollaborationRequest: Encodable {
     let locationIds: [String]
     let isPrivate: Bool
 
+    // Optional date range (for INFLUENCER_VISIT)
+    let startDate: String?
+    let endDate: String?
+
     // Delivery-specific
     let productName: String?
     let productRequirements: String?
     let quantityPerCreator: Int?
     let productValue: Double?
+    let productValueCurrency: String?
     let productVariations: String?
     let shipsWorldwide: Bool?
 
@@ -390,4 +422,16 @@ struct DeliveryDefaultsResponse: Decodable {
     let country: String?
     let availableDays: [String]?
     let timeSlot: String?
+}
+
+struct ImageUploadResponse: Decodable {
+    let url: String
+}
+
+struct RestaurantLocationsResponse: Decodable {
+    let data: [CollaborationLocation]?
+}
+
+struct MyRestaurantsResponse: Decodable {
+    let restaurants: [RestaurantProfile]?
 }

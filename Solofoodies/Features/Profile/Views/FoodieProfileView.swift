@@ -107,7 +107,7 @@ struct FoodieProfileView: View {
                     }
 
                     NavigationLink {
-                        Text("Editar Perfil") // TODO: Implement edit profile
+                        EditFoodieProfileView(viewModel: viewModel)
                     } label: {
                         Image(systemName: "gearshape.fill")
                             .font(.body)
@@ -421,6 +421,143 @@ struct RatingRow: View {
             return rating.rater?.foodieProfile?.profilePicture
         } else {
             return rating.rater?.restaurantProfiles?.first?.profilePicture
+        }
+    }
+}
+
+// MARK: - Edit Foodie Profile View
+
+struct EditFoodieProfileView: View {
+    @ObservedObject var viewModel: ProfileViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var bio: String = ""
+    @State private var city: String = ""
+    @State private var state: String = ""
+    @State private var country: String = ""
+    @State private var isSaving = false
+    @State private var showSuccess = false
+
+    var body: some View {
+        Form {
+            // Bio Section
+            Section(header: Text(String(localized: "Sobre ti"))) {
+                TextField(String(localized: "Bio..."), text: $bio, axis: .vertical)
+                    .lineLimit(3...6)
+            }
+
+            // Location Section
+            Section(header: Text(String(localized: "Ubicacion"))) {
+                TextField(String(localized: "Ciudad"), text: $city)
+                TextField(String(localized: "Provincia"), text: $state)
+                TextField(String(localized: "Pais"), text: $country)
+            }
+
+            // Social Networks (read-only info)
+            if !viewModel.socialNetworks.isEmpty {
+                Section(header: Text(String(localized: "Redes Sociales"))) {
+                    ForEach(viewModel.socialNetworks) { network in
+                        HStack {
+                            Image(systemName: network.platform.icon)
+                                .foregroundStyle(Color(hex: "E53935"))
+                            Text("@\(network.username)")
+                            Spacer()
+                            Text(viewModel.formatFollowers(network.followers))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
+            // Rates Section
+            Section(header: Text(String(localized: "Tarifas"))) {
+                if viewModel.rates.isEmpty {
+                    Text(String(localized: "No tienes tarifas configuradas"))
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(viewModel.rates) { rate in
+                        HStack {
+                            Text(rate.description)
+                            Spacer()
+                            Text(String(format: "%.0f€", rate.price))
+                                .fontWeight(.semibold)
+                        }
+                    }
+                }
+
+                Text(String(localized: "Para modificar tarifas, usa la web de Solofoodies"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle(String(localized: "Editar Perfil"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button {
+                    saveProfile()
+                } label: {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Text(String(localized: "Guardar"))
+                    }
+                }
+                .disabled(isSaving)
+            }
+        }
+        .onAppear {
+            loadCurrentData()
+        }
+        .alert(String(localized: "Perfil actualizado"), isPresented: $showSuccess) {
+            Button(String(localized: "Aceptar")) {
+                dismiss()
+            }
+        }
+    }
+
+    private func loadCurrentData() {
+        bio = viewModel.foodieProfile?.bio ?? ""
+        city = viewModel.foodieProfile?.address?.city ?? ""
+        state = viewModel.foodieProfile?.address?.state ?? ""
+        country = viewModel.foodieProfile?.address?.country ?? ""
+    }
+
+    private func saveProfile() {
+        isSaving = true
+
+        Task {
+            do {
+                // Update bio
+                try await ProfileService.shared.updateFoodieProfile(
+                    bio: bio.isEmpty ? nil : bio,
+                    profilePicture: nil
+                )
+
+                // Update address if changed
+                if !city.isEmpty || !state.isEmpty || !country.isEmpty {
+                    let address = Address(
+                        line: viewModel.foodieProfile?.address?.line,
+                        city: city,
+                        state: state,
+                        zipCode: viewModel.foodieProfile?.address?.zipCode,
+                        country: country,
+                        countryIso: viewModel.foodieProfile?.address?.countryIso
+                    )
+                    try await ProfileService.shared.updateFoodieAddress(address)
+                }
+
+                // Reload profile
+                if let userId = authViewModel.currentUser?.id {
+                    await viewModel.loadProfileData(for: userId)
+                }
+
+                showSuccess = true
+            } catch {
+                viewModel.error = String(localized: "Error al guardar el perfil")
+            }
+            isSaving = false
         }
     }
 }

@@ -9,6 +9,14 @@ final class ChatService {
     static let shared = ChatService()
     private let api = APIClient.shared
 
+    // Encoder without snake_case conversion for chat endpoints
+    private let camelCaseEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        // NO keyEncodingStrategy - keeps camelCase
+        return encoder
+    }()
+
     private init() {}
 
     // MARK: - Get Conversations
@@ -21,9 +29,46 @@ final class ChatService {
     // MARK: - Get or Create Conversation
 
     func getOrCreateConversation(otherUserId: String) async throws -> String {
-        let body = CreateConversationRequest(otherUserId: otherUserId)
-        let response: CreateConversationResponse = try await api.post(.createConversation, body: body)
-        return response.id
+        // Use custom request to ensure camelCase keys
+        let url = URL(string: "https://solofoodiesnewreact-production-7dd9.up.railway.app/api/chat/conversations")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        if let token = KeychainManager.shared.getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Manually create JSON with correct camelCase key
+        let bodyDict = ["otherUserId": otherUserId]
+        request.httpBody = try JSONSerialization.data(withJSONObject: bodyDict)
+
+        print("🌐 Chat Request: POST \(url)")
+        print("📤 Body: \(String(data: request.httpBody!, encoding: .utf8) ?? "")")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        print("📥 Response: \(httpResponse.statusCode)")
+        print("📥 Data: \(String(data: data, encoding: .utf8) ?? "")")
+
+        guard httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 else {
+            if let errorResponse = try? JSONDecoder().decode(ErrorResponse.self, from: data) {
+                throw APIError.serverError(errorResponse.error)
+            }
+            throw APIError.unknown(httpResponse.statusCode)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .iso8601
+
+        let conversationResponse = try decoder.decode(CreateConversationResponse.self, from: data)
+        return conversationResponse.id
     }
 
     // MARK: - Start Conversation from Collaboration

@@ -55,6 +55,13 @@ final class ProfileService {
     func updateFoodieAddress(_ address: Address) async throws {
         try await api.patch(.updateFoodieAddress, body: address)
     }
+
+    // MARK: - Get Collaboration Count
+
+    func getCollaborationCount() async throws -> Int {
+        let collaborations: [Collaboration] = try await api.get(.myCollaborations)
+        return collaborations.filter { $0.status == .completed }.count
+    }
 }
 
 // MARK: - Helper Types

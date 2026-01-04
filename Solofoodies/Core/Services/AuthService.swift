@@ -86,6 +86,13 @@ final class AuthService {
         return try await api.get(.me)
     }
 
+    // MARK: - Switch Active Restaurant
+
+    func switchActiveRestaurant(restaurantId: String) async throws -> User {
+        let request = SwitchRestaurantRequest(restaurantId: restaurantId)
+        return try await api.post(.switchActiveRestaurant, body: request)
+    }
+
     // MARK: - Logout
 
     func logout() {

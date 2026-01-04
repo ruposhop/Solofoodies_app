@@ -328,6 +328,14 @@ struct ProvinceFilterSheet: View {
 struct FoodieDetailView: View {
     let foodie: FoodieListItem
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var chatViewModel = ChatViewModel()
+    @StateObject private var collaborationsViewModel = CollaborationsViewModel()
+    @State private var showingChat = false
+    @State private var selectedConversation: Conversation?
+    @State private var showingInviteSheet = false
+    @State private var isLoadingChat = false
+    @State private var isLoadingInvite = false
 
     var body: some View {
         ScrollView {
@@ -548,10 +556,15 @@ struct FoodieDetailView: View {
 
                 HStack(spacing: 12) {
                     Button {
-                        // TODO: Open chat
+                        openChat()
                     } label: {
                         HStack {
-                            Image(systemName: "message.fill")
+                            if isLoadingChat {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .primary))
+                            } else {
+                                Image(systemName: "message.fill")
+                            }
                             Text(String(localized: "Mensaje"))
                         }
                         .frame(maxWidth: .infinity)
@@ -560,9 +573,10 @@ struct FoodieDetailView: View {
                         .foregroundColor(.primary)
                         .cornerRadius(12)
                     }
+                    .disabled(isLoadingChat)
 
                     Button {
-                        // TODO: Invite to collaboration
+                        showingInviteSheet = true
                     } label: {
                         HStack {
                             Image(systemName: "star.fill")
@@ -578,6 +592,21 @@ struct FoodieDetailView: View {
                 .padding()
                 .background(.ultraThinMaterial)
             }
+        }
+        .sheet(isPresented: $showingInviteSheet) {
+            InviteFoodieSheet(
+                foodie: foodie,
+                viewModel: collaborationsViewModel
+            )
+        }
+        .sheet(item: $selectedConversation) { conversation in
+            NavigationStack {
+                ChatDetailView(conversation: conversation, viewModel: chatViewModel)
+                    .environmentObject(authViewModel)
+            }
+        }
+        .task {
+            await collaborationsViewModel.loadMyPublicCollaborations()
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -617,6 +646,212 @@ struct FoodieDetailView: View {
             return String(format: "%.0fK", Double(count) / 1_000)
         }
         return "\(count)"
+    }
+
+    private func openChat() {
+        isLoadingChat = true
+        // Set current user ID so chat knows which messages are ours
+        chatViewModel.setCurrentUserId(authViewModel.currentUser?.id)
+
+        Task {
+            if let conversationId = await chatViewModel.getOrCreateConversation(with: foodie.user.id) {
+                // Create a conversation object to pass to ChatDetailView
+                let conversation = Conversation(
+                    id: conversationId,
+                    otherParticipant: ChatParticipant(
+                        id: foodie.user.id,
+                        profileId: foodie.id,
+                        name: foodie.displayName,
+                        username: foodie.igUsername,
+                        avatar: foodie.profilePicture,
+                        role: .foodie
+                    ),
+                    lastMessage: nil,
+                    lastMessageAt: nil,
+                    unreadCount: 0,
+                    createdAt: Date()
+                )
+                selectedConversation = conversation
+            }
+            isLoadingChat = false
+        }
+    }
+}
+
+// MARK: - Invite Foodie Sheet
+
+struct InviteFoodieSheet: View {
+    let foodie: FoodieListItem
+    @ObservedObject var viewModel: CollaborationsViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedCollaborationId: String?
+    @State private var isInviting = false
+    @State private var showSuccess = false
+
+    private var openCollaborations: [PublicCollaboration] {
+        viewModel.myPublicCollaborations.filter { $0.status == .open }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if viewModel.isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if openCollaborations.isEmpty {
+                    emptyState
+                } else {
+                    collaborationsList
+                }
+            }
+            .navigationTitle(String(localized: "Invitar a colaboracion"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancelar")) {
+                        dismiss()
+                    }
+                }
+            }
+            .alert(String(localized: "Invitacion enviada"), isPresented: $showSuccess) {
+                Button(String(localized: "Aceptar")) {
+                    dismiss()
+                }
+            } message: {
+                Text(String(localized: "Se ha enviado la invitacion a \(foodie.displayName)"))
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "megaphone.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(.secondary)
+
+            Text(String(localized: "No tienes colaboraciones activas"))
+                .font(.headline)
+
+            Text(String(localized: "Crea una colaboracion para poder invitar a creadores"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var collaborationsList: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                Text(String(localized: "Selecciona una colaboracion para invitar a \(foodie.displayName)"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+
+                ForEach(openCollaborations) { collab in
+                    CollaborationInviteRow(
+                        collaboration: collab,
+                        isSelected: selectedCollaborationId == collab.id,
+                        isInviting: isInviting && selectedCollaborationId == collab.id
+                    ) {
+                        inviteFoodie(to: collab)
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+
+    private func inviteFoodie(to collaboration: PublicCollaboration) {
+        selectedCollaborationId = collaboration.id
+        isInviting = true
+
+        Task {
+            do {
+                try await CollaborationService.shared.inviteFoodieToCollaboration(
+                    collaborationId: collaboration.id,
+                    foodieId: foodie.id
+                )
+                showSuccess = true
+            } catch {
+                viewModel.error = String(localized: "Error al enviar la invitacion")
+            }
+            isInviting = false
+        }
+    }
+}
+
+struct CollaborationInviteRow: View {
+    let collaboration: PublicCollaboration
+    let isSelected: Bool
+    let isInviting: Bool
+    let onInvite: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Image
+            if let imageUrl = collaboration.image,
+               let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle()
+                        .fill(Color(.systemGray5))
+                }
+                .frame(width: 50, height: 50)
+                .cornerRadius(8)
+            } else {
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(width: 50, height: 50)
+                    .cornerRadius(8)
+                    .overlay {
+                        Image(systemName: collaboration.type.icon)
+                            .foregroundStyle(.secondary)
+                    }
+            }
+
+            // Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(collaboration.displayTitle)
+                    .font(.subheadline.bold())
+                    .lineLimit(1)
+
+                Text(collaboration.type.displayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            // Invite button
+            Button {
+                onInvite()
+            } label: {
+                if isInviting {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .frame(width: 70)
+                } else {
+                    Text(String(localized: "Invitar"))
+                        .font(.subheadline.bold())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color(hex: "E53935"))
+            .foregroundColor(.white)
+            .cornerRadius(8)
+            .disabled(isInviting)
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
 

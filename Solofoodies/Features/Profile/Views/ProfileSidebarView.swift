@@ -35,7 +35,12 @@ struct ProfileSidebarView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(menuItems, id: \.title) { item in
-                            menuRow(icon: item.icon, title: item.title)
+                            NavigationLink {
+                                destinationView(for: item.destination)
+                            } label: {
+                                menuRow(icon: item.icon, title: item.title)
+                            }
+                            .buttonStyle(.plain)
                         }
 
                         // External Links
@@ -115,7 +120,7 @@ struct ProfileSidebarView: View {
 
             // Balance Badge
             NavigationLink {
-                Text("Balance") // TODO: Implement balance view
+                BalanceView(balance: viewModel.balance)
             } label: {
                 Text("\(Int(viewModel.balance))€")
                     .font(.subheadline)
@@ -142,6 +147,32 @@ struct ProfileSidebarView: View {
             }
     }
 
+    // MARK: - Destination Views
+
+    @ViewBuilder
+    private func destinationView(for destination: ProfileDestination) -> some View {
+        switch destination {
+        case .editProfile:
+            EditProfileView()
+        case .trips:
+            TripsView()
+        case .reviews:
+            ReviewsView()
+        case .collaborations:
+            MyCollaborationsView()
+        case .rates:
+            RatesView()
+        case .history:
+            HistoryView()
+        case .invitations:
+            InvitationsView()
+        case .settings:
+            SettingsView()
+        case .balance:
+            BalanceView(balance: viewModel.balance)
+        }
+    }
+
     // MARK: - Menu Row
 
     private func menuRow(icon: String, title: String, isLink: Bool = false) -> some View {
@@ -160,6 +191,10 @@ struct ProfileSidebarView: View {
                 Image(systemName: "arrow.up.right")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.horizontal)
@@ -219,26 +254,37 @@ struct ProfileSidebarView: View {
     }
 }
 
+// MARK: - Restaurant Menu Destination
+
+enum RestaurantMenuDestination {
+    case editRestaurant
+    case collaborations
+    case history
+    case subscription
+    case settings
+}
+
 // MARK: - Restaurant Profile Sidebar
 
 struct RestaurantProfileSidebarView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showRestaurantPicker = false
 
     private var user: User? { authViewModel.currentUser }
     private var activeRestaurant: RestaurantProfile? {
-        guard let activeId = user?.activeRestaurantId else {
-            return user?.restaurants?.first
-        }
-        return user?.restaurants?.first(where: { $0.id == activeId }) ?? user?.restaurants?.first
+        authViewModel.getActiveRestaurant()
+    }
+    private var restaurants: [RestaurantProfile] {
+        authViewModel.restaurants
     }
 
-    private let menuItems: [(icon: String, title: String)] = [
-        ("building.2.fill", "Mi Restaurante"),
-        ("star.fill", "Colaboraciones"),
-        ("clock.fill", "Historial"),
-        ("creditcard.fill", "Suscripcion"),
-        ("gearshape.fill", "Configuracion"),
+    private let menuItems: [(icon: String, title: String, destination: RestaurantMenuDestination)] = [
+        ("building.2.fill", "Mi Restaurante", .editRestaurant),
+        ("star.fill", "Colaboraciones", .collaborations),
+        ("clock.fill", "Historial", .history),
+        ("creditcard.fill", "Suscripcion", .subscription),
+        ("gearshape.fill", "Configuracion", .settings),
     ]
 
     var body: some View {
@@ -247,13 +293,23 @@ struct RestaurantProfileSidebarView: View {
                 // Restaurant Header
                 restaurantHeader
 
+                // Restaurant Switcher (only show if multiple restaurants)
+                if authViewModel.hasMultipleRestaurants {
+                    restaurantSwitcher
+                }
+
                 Divider()
 
                 // Menu Items
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(menuItems, id: \.title) { item in
-                            menuRow(icon: item.icon, title: item.title)
+                            NavigationLink {
+                                restaurantDestinationView(for: item.destination)
+                            } label: {
+                                menuRow(icon: item.icon, title: item.title)
+                            }
+                            .buttonStyle(.plain)
                         }
 
                         // External Links
@@ -289,6 +345,53 @@ struct RestaurantProfileSidebarView: View {
             }
         }
         .presentationDetents([.large])
+        .confirmationDialog(
+            String(localized: "Cambiar de restaurante"),
+            isPresented: $showRestaurantPicker,
+            titleVisibility: .visible
+        ) {
+            ForEach(restaurants) { restaurant in
+                Button {
+                    Task {
+                        await authViewModel.switchRestaurant(to: restaurant.id)
+                    }
+                } label: {
+                    HStack {
+                        Text(restaurant.restaurantName)
+                        if restaurant.id == activeRestaurant?.id {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+            Button(String(localized: "Cancelar"), role: .cancel) {}
+        }
+    }
+
+    // MARK: - Restaurant Switcher
+
+    private var restaurantSwitcher: some View {
+        Button {
+            showRestaurantPicker = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.caption)
+                Text(String(localized: "Cambiar restaurante"))
+                    .font(.subheadline)
+                Spacer()
+                Text("\(restaurants.count) \(String(localized: "marcas"))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+            .background(Color(.systemGray6))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Restaurant Header
@@ -367,6 +470,24 @@ struct RestaurantProfileSidebarView: View {
             }
     }
 
+    // MARK: - Destination Views
+
+    @ViewBuilder
+    private func restaurantDestinationView(for destination: RestaurantMenuDestination) -> some View {
+        switch destination {
+        case .editRestaurant:
+            RestaurantProfileEditView()
+        case .collaborations:
+            RestaurantCollaborationsView()
+        case .history:
+            RestaurantHistoryView()
+        case .subscription:
+            SubscriptionView()
+        case .settings:
+            SettingsView()
+        }
+    }
+
     // MARK: - Menu Row
 
     private func menuRow(icon: String, title: String, isLink: Bool = false) -> some View {
@@ -385,6 +506,10 @@ struct RestaurantProfileSidebarView: View {
                 Image(systemName: "arrow.up.right")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.horizontal)
@@ -444,6 +569,98 @@ struct RestaurantProfileSidebarView: View {
     }
 }
 
+// MARK: - Balance View
+
+struct BalanceView: View {
+    let balance: Double
+
+    var body: some View {
+        VStack(spacing: 24) {
+            // Balance Card
+            VStack(spacing: 8) {
+                Text(String(localized: "Tu Balance"))
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+
+                Text(String(format: "%.2f€", balance))
+                    .font(.system(size: 48, weight: .bold))
+                    .foregroundStyle(Color(hex: "E53935"))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 32)
+            .background(Color(.systemGray6))
+            .cornerRadius(16)
+            .padding(.horizontal)
+
+            // Info Section
+            VStack(alignment: .leading, spacing: 16) {
+                Text(String(localized: "Como funciona"))
+                    .font(.headline)
+
+                infoRow(
+                    icon: "star.fill",
+                    title: String(localized: "Gana creditos"),
+                    description: String(localized: "Completa colaboraciones para acumular creditos")
+                )
+
+                infoRow(
+                    icon: "creditcard.fill",
+                    title: String(localized: "Usa tu balance"),
+                    description: String(localized: "Canjea tu balance por transferencias bancarias")
+                )
+
+                infoRow(
+                    icon: "clock.fill",
+                    title: String(localized: "Balance pendiente"),
+                    description: String(localized: "Los creditos se confirman al completar la colaboracion")
+                )
+            }
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            .padding(.horizontal)
+
+            Spacer()
+
+            // Withdraw Button
+            Button {
+                // TODO: Implement withdrawal flow
+            } label: {
+                Text(String(localized: "Solicitar retiro"))
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(balance > 0 ? Color(hex: "E53935") : Color(.systemGray4))
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+            }
+            .disabled(balance <= 0)
+            .padding(.horizontal)
+            .padding(.bottom)
+        }
+        .navigationTitle(String(localized: "Balance"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func infoRow(icon: String, title: String, description: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(Color(hex: "E53935"))
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.bold())
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 #Preview("Foodie Sidebar") {
     ProfileSidebarView()
         .environmentObject(AuthViewModel())
@@ -452,4 +669,10 @@ struct RestaurantProfileSidebarView: View {
 #Preview("Restaurant Sidebar") {
     RestaurantProfileSidebarView()
         .environmentObject(AuthViewModel())
+}
+
+#Preview("Balance View") {
+    NavigationStack {
+        BalanceView(balance: 125.50)
+    }
 }

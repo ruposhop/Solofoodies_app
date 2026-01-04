@@ -103,6 +103,44 @@ struct MessagesResponse: Decodable {
 
 struct CreateConversationResponse: Decodable {
     let id: String
+
+    // Handle different API response formats
+    init(from decoder: Decoder) throws {
+        // Try direct id at root
+        if let container = try? decoder.container(keyedBy: CodingKeys.self) {
+            // Try "id" key first
+            if let id = try? container.decode(String.self, forKey: .id) {
+                self.id = id
+                return
+            }
+            // Try "conversationId" key
+            if let conversationId = try? container.decode(String.self, forKey: .conversationId) {
+                self.id = conversationId
+                return
+            }
+            // Try nested "data" object
+            if let data = try? container.nestedContainer(keyedBy: CodingKeys.self, forKey: .data) {
+                if let id = try? data.decode(String.self, forKey: .id) {
+                    self.id = id
+                    return
+                }
+            }
+            // Try "conversation" object
+            if let conversation = try? container.nestedContainer(keyedBy: CodingKeys.self, forKey: .conversation) {
+                if let id = try? conversation.decode(String.self, forKey: .id) {
+                    self.id = id
+                    return
+                }
+            }
+        }
+        throw DecodingError.dataCorrupted(
+            DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Could not decode conversation ID")
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, conversationId, data, conversation
+    }
 }
 
 struct UnreadCountResponse: Decodable {
@@ -121,11 +159,19 @@ struct HideConversationResponse: Decodable {
 
 struct CreateConversationRequest: Encodable {
     let otherUserId: String
+
+    enum CodingKeys: String, CodingKey {
+        case otherUserId // Keep camelCase for API
+    }
 }
 
 struct CreateConversationFromCollaborationRequest: Encodable {
     let collaborationId: String
     let initialMessage: String?
+
+    enum CodingKeys: String, CodingKey {
+        case collaborationId, initialMessage // Keep camelCase for API
+    }
 }
 
 struct SendMessageRequest: Encodable {
@@ -137,6 +183,10 @@ struct BulkMessageRequest: Encodable {
     let message: String
     let statuses: [String]
     let introductoryOnly: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case publicCollaborationId, message, statuses, introductoryOnly // Keep camelCase for API
+    }
 }
 
 struct BulkMessageResponse: Decodable {

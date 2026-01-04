@@ -161,8 +161,15 @@ final class ChatViewModel: ObservableObject {
 
     func getOrCreateConversation(with userId: String) async -> String? {
         do {
-            return try await service.getOrCreateConversation(otherUserId: userId)
+            let conversationId = try await service.getOrCreateConversation(otherUserId: userId)
+            print("✅ Created/Got conversation: \(conversationId)")
+            return conversationId
+        } catch let apiError as APIError {
+            print("❌ Chat API Error: \(apiError.localizedDescription)")
+            self.error = apiError.localizedDescription
+            return nil
         } catch {
+            print("❌ Chat Error: \(error)")
             self.error = String(localized: "Error iniciando conversacion")
             return nil
         }
